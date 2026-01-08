@@ -1,33 +1,29 @@
 # Stage 1: Build the React Frontend
+# Assumes 'frontend' folder exists. If you flattened that too, look for package.json in root.
 FROM node:18-alpine as builder
 WORKDIR /app/frontend
 
-# Copy package files and install dependencies
+# Try to copy from frontend folder. 
 COPY frontend/package*.json ./
 RUN npm install
 
-# Copy source code and build
 COPY frontend/ .
 RUN npm run build
 
-# Stage 2: Setup Python Backend and Serve
+# Stage 2: Setup Python Backend
 FROM python:3.9-slim
 
 WORKDIR /code
 
-# Copy Backend Requirements and Install
-COPY backend/requirements.txt .
+# Copy dependencies directly from ROOT (since you uploaded them loose)
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy Backend Code
-COPY backend/ .
+# Copy backend files from ROOT
+COPY main.py data_processing.py Book1.csv ./
 
-# Copy CSV Database
-COPY Book1.csv .
-
-# Copy Built Frontend from Stage 1 to /code/frontend_dist
+# Copy the built frontend from Stage 1
 COPY --from=builder /app/frontend/dist ./frontend_dist
 
-# Expose port (Render sets $PORT env var, user needs to bind to it)
-# We will use a script or direct command. Uvicorn needs to know the port.
+# Run
 CMD sh -c "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}"
